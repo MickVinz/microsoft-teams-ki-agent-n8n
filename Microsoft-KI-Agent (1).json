@@ -1,0 +1,548 @@
+{
+  "name": "Microsoft x n8n",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.text }}",
+        "options": {
+          "systemMessage": "=Du bist ein hilfreicher Outlook Assistent der Outlook Tools nutzen kann. Du verwaltest das Outlook von [NAME].\n\nDas aktuelle Datum ist: {{ $now }}\n\n# Tools\n- Email Draft: Um Email Entwürfe zu erstellen.\n- Send Email: Um Emails direkt zu senden.\n- Get Emails: Um Emails zu lesen.\n- Get Events: Um Events im Kalender einzusehen.\n- Create Event: Um ein Event im Kalender zu erstellen.\n- Reply Draft: Um einen Emailantwortentwurf zu erstellen. Führe vorher \"Get Emails\" aus um die entsprechende Message ID der Email, auf die du antworten sollst, zu bekommen.\n- Send Reply: Um einen Emailantwort zu senden. Führe vorher \"Get Emails\" aus um die entsprechende Message ID der Email, auf die du antworten sollst, zu bekommen.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        400,
+        40
+      ],
+      "id": "90a91f1d-bf58-487c-965a-89432663f4ca",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.conversation.id }}",
+        "contextWindowLength": 15
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        400,
+        320
+      ],
+      "id": "4268447b-0396-43a8-be1a-39252d3d73d8",
+      "name": "Window Buffer Memory"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "f7eb820e-e24d-4d08-b4a3-0bc05f1600a6",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        40,
+        40
+      ],
+      "id": "f86d7ead-4dab-499b-9395-e8e3dfaa1bde",
+      "name": "Webhook",
+      "webhookId": "f7eb820e-e24d-4d08-b4a3-0bc05f1600a6"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', `Der Betreff der Email.`, 'string') }}",
+        "bodyContent": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', `Der Inhalt der Email.`, 'string') }}",
+        "additionalFields": {
+          "toRecipients": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', `Die Email des Empfängers.`, 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.microsoftOutlookTool",
+      "typeVersion": 2,
+      "position": [
+        720,
+        460
+      ],
+      "id": "541d5424-0ed2-4db1-9fdc-658711f4bcd5",
+      "name": "Email Draft",
+      "webhookId": "7b6aff15-d86e-43df-a0a9-9f96f7eaf4aa",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "FaEq7sZvZbsZgQJV",
+          "name": "Microsoft Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "grant_type",
+              "value": "client_credentials"
+            },
+            {
+              "name": "client_id",
+              "value": "client id hier einfügen"
+            },
+            {
+              "name": "client_secret",
+              "value": "client secret hier einfügen"
+            },
+            {
+              "name": "scope",
+              "value": "https://api.botframework.com/.default"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        840,
+        40
+      ],
+      "id": "1bdd9fbb-e60a-4425-8302-8f9adab845c5",
+      "name": "Get OAuth Token"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Get OAuth Token').item.json.access_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "type",
+              "value": "message"
+            },
+            {
+              "name": "from.id",
+              "value": "={{ $('Webhook').item.json.body.from.id }}"
+            },
+            {
+              "name": "recipient.id",
+              "value": "={{ $('Webhook').item.json.body.recipient.id }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $('AI Agent').item.json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1300,
+        40
+      ],
+      "id": "3b46dbc7-e357-4189-b70e-fd6d19a165d4",
+      "name": "Send Reply to Teams"
+    },
+    {
+      "parameters": {
+        "toRecipients": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', `Die Email des Empfängers.`, 'string') }}",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', `Der Betreff der Email.`, 'string') }}",
+        "bodyContent": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', `Der Inhalt der Email.`, 'string') }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlookTool",
+      "typeVersion": 2,
+      "position": [
+        840,
+        460
+      ],
+      "id": "b1a5e6aa-cbec-4117-bc75-cb966d999138",
+      "name": "Send Email",
+      "webhookId": "5b51bc73-9d33-4bc0-88ee-8d333389f71b",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "FaEq7sZvZbsZgQJV",
+          "name": "Microsoft Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "fromAllCalendars": false,
+        "calendarId": {
+          "__rl": true,
+          "value": "AAMkADY3ZTRhODNhLTljMzUtNDU3Ny05ZmIyLWVkMWVkYWViMGJiMQBGAAAAAAAJus55mnsKQLaA8P6JIl0jBwBrqxsuzPqmS7QT7_eRNO1vAAAAAAEGAABrqxsuzPqmS7QT7_eRNO1vAAAAAF1bAAA=",
+          "mode": "list",
+          "cachedResultName": "Calendar"
+        },
+        "returnAll": true,
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlookTool",
+      "typeVersion": 2,
+      "position": [
+        980,
+        460
+      ],
+      "id": "f4c38a69-0b13-4f16-8529-47589f2dad77",
+      "name": "Get Events",
+      "webhookId": "123d622c-d352-4c90-8ecf-7094c1fc95e2",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "FaEq7sZvZbsZgQJV",
+          "name": "Microsoft Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": true,
+        "filtersUI": {
+          "values": {
+            "filters": {
+              "foldersToInclude": [
+                "AAMkADY3ZTRhODNhLTljMzUtNDU3Ny05ZmIyLWVkMWVkYWViMGJiMQAuAAAAAAAJus55mnsKQLaA8P6JIl0jAQBrqxsuzPqmS7QT7_eRNO1vAAAAAAEMAAA="
+              ],
+              "readStatus": "unread"
+            }
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlookTool",
+      "typeVersion": 2,
+      "position": [
+        580,
+        460
+      ],
+      "id": "417e86c6-24c0-4229-955d-5ec12bd121e9",
+      "name": "Get Emails",
+      "webhookId": "709daa12-23a0-4bf4-b2c4-828f76461a7d",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "KQhYdScpJjlokmK3",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "create",
+        "calendarId": {
+          "__rl": true,
+          "value": "AAMkADY3ZTRhODNhLTljMzUtNDU3Ny05ZmIyLWVkMWVkYWViMGJiMQBGAAAAAAAJus55mnsKQLaA8P6JIl0jBwBrqxsuzPqmS7QT7_eRNO1vAAAAAAEGAABrqxsuzPqmS7QT7_eRNO1vAAAAAF1bAAA=",
+          "mode": "list",
+          "cachedResultName": "Calendar"
+        },
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Title', `Der Titel des Events.`, 'string') }}",
+        "startDateTime": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', `Der Startzeitpunkt des Events.`, 'string') }}",
+        "endDateTime": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', `Der Endzeitpunkt des Events.`, 'string') }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlookTool",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        460
+      ],
+      "id": "63172086-d42a-4b5f-bb8c-6c575db52075",
+      "name": "Create Event",
+      "webhookId": "618e8095-ff13-4bd0-9ab5-5d0c0a0b04a9",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "FaEq7sZvZbsZgQJV",
+          "name": "Microsoft Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "334a429a-0c7e-4b0f-aa41-cbf4dacce84e",
+              "name": "URL",
+              "value": "={{ $('Webhook').item.json.body.serviceUrl }}/v3/conversations/{{ $('Webhook').item.json.body.conversation.id }}/activities",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1080,
+        40
+      ],
+      "id": "cdaab865-3ee3-43b0-b5bc-0f3bc630c89b",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": {
+          "__rl": true,
+          "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', `Die Message ID der Nachricht.`, 'string') }}",
+          "mode": "id"
+        },
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', `Der Inhalt der Nachricht.`, 'string') }}",
+        "options": {
+          "saveAsDraft": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Save_as_Draft', ``, 'boolean') }}"
+        }
+      },
+      "type": "n8n-nodes-base.microsoftOutlookTool",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        460
+      ],
+      "id": "a016147c-66ec-403a-aaf5-b5bd59d7ad89",
+      "name": "Send Reply",
+      "webhookId": "743417c1-82e0-4bee-8d20-4564a90d624a",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "FaEq7sZvZbsZgQJV",
+          "name": "Microsoft Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "getRows",
+        "workbook": {
+          "__rl": true,
+          "value": "01FY5XODXV5ERYKYGKDBA35BMLZEVUI2KR",
+          "mode": "list",
+          "cachedResultName": "company_data",
+          "cachedResultUrl": "https://crystalflow-my.sharepoint.com/personal/julianivanov_crystalflow_onmicrosoft_com/_layouts/15/Doc.aspx?sourcedoc=%7B8523E9F5-CA60-4118-BE85-8BC92B446951%7D&file=company_data.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1"
+        },
+        "worksheet": {
+          "__rl": true,
+          "value": "{B39EA57F-2ACC-40F7-8758-371CB424D98D}",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://crystalflow-my.sharepoint.com/personal/julianivanov_crystalflow_onmicrosoft_com/_layouts/15/Doc.aspx?sourcedoc=%7B8523E9F5-CA60-4118-BE85-8BC92B446951%7D&file=company_data.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1&activeCell=Sheet1!A1"
+        },
+        "table": {
+          "__rl": true,
+          "value": "{3CEA3D6D-0FA7-4C06-A1A1-44C44502E5E8}",
+          "mode": "list",
+          "cachedResultName": "Table1",
+          "cachedResultUrl": "https://crystalflow-my.sharepoint.com/personal/julianivanov_crystalflow_onmicrosoft_com/_layouts/15/Doc.aspx?sourcedoc=%7B8523E9F5-CA60-4118-BE85-8BC92B446951%7D&file=company_data.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1&activeCell=Sheet1!A1:J6"
+        },
+        "returnAll": true,
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.microsoftExcelTool",
+      "typeVersion": 2.1,
+      "position": [
+        1260,
+        460
+      ],
+      "id": "84c9612c-df2d-45cf-921e-535e86d77f24",
+      "name": "Kundeninformationen",
+      "credentials": {
+        "microsoftExcelOAuth2Api": {
+          "id": "kxz3NgWcTjOJ3l8E",
+          "name": "Microsoft Excel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "id": "d915c8a4-14ce-4797-b4b5-1867d2a8f97a",
+      "name": "Azure OpenAI Chat Model",
+      "credentials": {
+        "azureOpenAiApi": {
+          "id": "GMLoDeEECI1vHTwF",
+          "name": "n8n-tutorial"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Get OAuth Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Draft": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get OAuth Token": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Events": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Emails": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Event": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Send Reply to Teams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reply": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Kundeninformationen": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Azure OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8a241e48-2b89-4e3c-b7d5-03f84cea6c95",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b0155eb7741c71e121e8ae6624cbe1c1b88d8af67303265d5c74110aa9dee75a"
+  },
+  "id": "ciDz7jJY91e75f9m",
+  "tags": [
+    {
+      "createdAt": "2025-02-16T09:28:45.180Z",
+      "updatedAt": "2025-02-16T09:28:45.180Z",
+      "id": "9N4pMhakmxidbLXj",
+      "name": "tutorial"
+    }
+  ]
+}
